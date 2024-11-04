@@ -136,27 +136,48 @@ def ISS_pipeline(fov, codebook,
 
     return decoded
 
+import numpy as np
+import math
+
 def QC_score_calc(decoded):
     QC_score_list_min = [] 
     QC_score_list_mean = [] 
     QC_score_all_bases = []
+    intensity_values_all_cycles = []  # New list to store intensity values
+
     for i in range(len(decoded)):
-        intensity_array_int = decoded[i] 
+        intensity_array_int = decoded[i]
         quality_list = []
+        intensity_cycle_values = []  # Temporary list to store values for each cycle
+
         for j in range(len(intensity_array_int)):
-            quality = (np.array(intensity_array_int[j]).max())/(np.array(intensity_array_int[j]).sum()) 
+            intensity_values = np.array(intensity_array_int[j])  # Convert to array
+            quality = intensity_values.max() / intensity_values.sum()
             quality_list.append(quality)
-        quality_list =  [x if math.isnan(x) else x for x in quality_list]
-        QC_score_min = np.array(quality_list).min() 
-        QC_score_mean = np.array(quality_list).mean() 
+
+            # Store the intensity values for this cycle
+            intensity_cycle_values.append(intensity_values.tolist())
+
+        # Handle NaN values
+        quality_list = [x if not math.isnan(x) else 0 for x in quality_list]
+        
+        # Append to lists
+        QC_score_min = np.array(quality_list).min()
+        QC_score_mean = np.array(quality_list).mean()
         QC_score_list_min.append(QC_score_min)
         QC_score_list_mean.append(QC_score_mean)
         QC_score_all_bases.append(quality_list)
+        intensity_values_all_cycles.append(intensity_cycle_values)  # Save intensity values
+
+    # Convert to DataFrame
     df = decoded.to_features_dataframe()
     df['quality_minimum'] = QC_score_list_min
     df['quality_mean'] = QC_score_list_mean
     df['quality_all_bases'] = QC_score_all_bases
+    df['intensity_values_all_cycles'] = intensity_values_all_cycles  # Add intensity values
+
     return df
+
 
 def process_experiment(exp_path, 
                         output, 
