@@ -457,7 +457,7 @@ def check_plps(bcf_all,final_designed,genes,path,subgroup=1):
     bcf.to_csv(path+'/specific_targets_'+str(subgroup)+'.csv')
     return bcf,genes_good_PLPs, genes_too_low_PLPs, genes_no_PLPs
 
-def build_plps(path,specific_seqs_final,L_probe_library,plp_length,how='start',on=201): #starts, end, customized
+def build_plps(path, specific_seqs_final, L_probe_library, plp_length, anchor, how='start', on=201): 
     import pandas as pd
     import numpy as np
     from Bio.Seq import Seq
@@ -472,99 +472,108 @@ def build_plps(path,specific_seqs_final,L_probe_library,plp_length,how='start',o
     from Bio import AlignIO
     import random
     import numpy as np
-    bcf=specific_seqs_final
-    if how=='customized':
-#        print(customized)
-        selected_ID_to_gene=pd.read_csv(on,sep=',')
-        column_names = ["Larm", "idseq", "anchor", "Rarm","LbarID", "AffyID", "Gene"]
-        probesP1 = pd.DataFrame (columns = column_names)
+
+    bcf = specific_seqs_final
+
+    if how == 'customized':
+        selected_ID_to_gene = pd.read_csv(on, sep=',')
+        column_names = ["Larm", "idseq", "anchor", "Rarm", "LbarID", "AffyID", "Gene"]
+        probesP1 = pd.DataFrame(columns=column_names)
         gene_names_ID_columns = ['gene', "idseq", 'Lbar_ID', 'AffyID']
         gene_names_ID = pd.DataFrame(columns=gene_names_ID_columns)
-        sbh=pd.read_csv(L_probe_library)
-        gene2ID=dict(zip(selected_ID_to_gene['Gene'],selected_ID_to_gene['Lbar_ID']))
+        sbh = pd.read_csv(L_probe_library)
+        gene2ID = dict(zip(selected_ID_to_gene['Gene'], selected_ID_to_gene['Lbar_ID']))
         gname = bcf['Gene']
         gname = gname.unique()
-        column_names = ["Larm", "idseq", "anchor", "Rarm", "AffyID", "Gene"]
-        n=0
+        n = 0
         for g in gname:
-            gene_names_ID = gene_names_ID.append({"gene": g, "idseq" : np.array(sbh.loc[sbh['Lbar_ID']==gene2ID[g],'ID_Seq'])[0], "Lbar_ID" : str(np.array(sbh.loc[sbh['Lbar_ID']==gene2ID[g],'Lbar_ID'])[0]), "AffyID" : np.array(sbh.loc[sbh['Lbar_ID']==gene2ID[g],'L_Affy_ID'])[0] }, ignore_index=True)
-            n=n+1
-        gene_names_ID2=gene_names_ID.set_index("gene", drop = False)
-        dictiocodes=dict(zip(sbh['L_Affy_ID'],sbh['Barcode_Combi']))
-        gene_names_ID2['code']=list(gene_names_ID2['AffyID'].map(dictiocodes))
-        gene_names_ID2.to_csv(path+'/codebook.csv')
-    if how=='start':
-        #this step assings a unique barcode to a gene (meaning that all the probes for the same gene will have the same barcode)
-        #generate an empty dataframe to populate with the probe sequence, and useful counters to access stats at the end.
-        #ID=LbarID-200
+            gene_names_ID = gene_names_ID.append({
+                "gene": g,
+                "idseq": np.array(sbh.loc[sbh['Lbar_ID'] == gene2ID[g], 'ID_Seq'])[0],
+                "Lbar_ID": str(np.array(sbh.loc[sbh['Lbar_ID'] == gene2ID[g], 'Lbar_ID'])[0]),
+                "AffyID": np.array(sbh.loc[sbh['Lbar_ID'] == gene2ID[g], 'L_Affy_ID'])[0]
+            }, ignore_index=True)
+            n = n + 1
+        gene_names_ID2 = gene_names_ID.set_index("gene", drop=False)
+        dictiocodes = dict(zip(sbh['L_Affy_ID'], sbh['Barcode_Combi']))
+        gene_names_ID2['code'] = list(gene_names_ID2['AffyID'].map(dictiocodes))
+        gene_names_ID2.to_csv(path + '/codebook.csv')
+
+    if how == 'start':
         gname = bcf['Gene']
         gname = gname.unique()
-        column_names = ["Larm", "idseq", "anchor", "Rarm","LbarID", "AffyID", "Gene"]
-        probesP1 = pd.DataFrame (columns = column_names)
+        column_names = ["Larm", "idseq", "anchor", "Rarm", "LbarID", "AffyID", "Gene"]
+        probesP1 = pd.DataFrame(columns=column_names)
         gene_names_ID_columns = ['gene', "idseq", 'Lbar_ID', 'AffyID']
         gene_names_ID = pd.DataFrame(columns=gene_names_ID_columns)
-        ID=on
-        sbh=pd.read_csv(L_probe_library)
-        n=0
+        ID = on
+        sbh = pd.read_csv(L_probe_library)
+        n = 0
         for g in gname:
-            gene_names_ID = gene_names_ID.append({"gene": g, "idseq" : np.array(sbh.loc[sbh['number']==ID+n,'ID_Seq'])[0], "Lbar_ID" : str(np.array(sbh.loc[sbh['number']==ID+n,'Lbar_ID'])[0]), "AffyID" : np.array(sbh.loc[sbh['number']==ID+n,'L_Affy_ID'])[0] }, ignore_index=True)
-            n=n+1
-        gene_names_ID2=gene_names_ID.set_index("gene", drop = False)
-        dictiocodes=dict(zip(sbh['L_Affy_ID'],sbh['Barcode_Combi']))
-        gene_names_ID2['code']=list(gene_names_ID2['AffyID'].map(dictiocodes))
-        gene_names_ID2.to_csv(path+'/codebook.csv')
-    if how=='end':
-        #this step assings a unique barcode to a gene (meaning that all the probes for the same gene will have the same barcode)
-        #generate an empty dataframe to populate with the probe sequence, and useful counters to access stats at the end.
-        #ID=LbarID-200
+            gene_names_ID = gene_names_ID.append({
+                "gene": g,
+                "idseq": np.array(sbh.loc[sbh['number'] == ID + n, 'ID_Seq'])[0],
+                "Lbar_ID": str(np.array(sbh.loc[sbh['number'] == ID + n, 'Lbar_ID'])[0]),
+                "AffyID": np.array(sbh.loc[sbh['number'] == ID + n, 'L_Affy_ID'])[0]
+            }, ignore_index=True)
+            n = n + 1
+        gene_names_ID2 = gene_names_ID.set_index("gene", drop=False)
+        dictiocodes = dict(zip(sbh['L_Affy_ID'], sbh['Barcode_Combi']))
+        gene_names_ID2['code'] = list(gene_names_ID2['AffyID'].map(dictiocodes))
+        gene_names_ID2.to_csv(path + '/codebook.csv')
+
+    if how == 'end':
         gname = bcf['Gene']
         gname = gname.unique()
-        column_names = ["Larm", "idseq", "anchor", "Rarm","LbarID", "AffyID", "Gene"]
-        probesP1 = pd.DataFrame (columns = column_names)
+        column_names = ["Larm", "idseq", "anchor", "Rarm", "LbarID", "AffyID", "Gene"]
+        probesP1 = pd.DataFrame(columns=column_names)
         gene_names_ID_columns = ['gene', "idseq", 'Lbar_ID', 'AffyID']
         gene_names_ID = pd.DataFrame(columns=gene_names_ID_columns)
-        ID=on-len(gname)
-        sbh=pd.read_csv(L_probe_library)
-        n=0
+        ID = on - len(gname)
+        sbh = pd.read_csv(L_probe_library)
+        n = 0
         for g in gname:
-            gene_names_ID = gene_names_ID.append({"gene": g, "idseq" : np.array(sbh.loc[sbh['number']==ID+n,'ID_Seq'])[0], "Lbar_ID" : str(np.array(sbh.loc[sbh['number']==ID+n,'Lbar_ID'])[0]), "AffyID" : np.array(sbh.loc[sbh['number']==ID+n,'L_Affy_ID'])[0] }, ignore_index=True)
-            n=n+1
-        gene_names_ID2=gene_names_ID.set_index("gene", drop = False)
-        dictiocodes=dict(zip(sbh['L_Affy_ID'],sbh['Barcode_Combi']))
-        gene_names_ID2['code']=list(gene_names_ID2['AffyID'].map(dictiocodes))
-        gene_names_ID2.to_csv(path+'/codebook.csv')
+            gene_names_ID = gene_names_ID.append({
+                "gene": g,
+                "idseq": np.array(sbh.loc[sbh['number'] == ID + n, 'ID_Seq'])[0],
+                "Lbar_ID": str(np.array(sbh.loc[sbh['number'] == ID + n, 'Lbar_ID'])[0]),
+                "AffyID": np.array(sbh.loc[sbh['number'] == ID + n, 'L_Affy_ID'])[0]
+            }, ignore_index=True)
+            n = n + 1
+        gene_names_ID2 = gene_names_ID.set_index("gene", drop=False)
+        dictiocodes = dict(zip(sbh['L_Affy_ID'], sbh['Barcode_Combi']))
+        gene_names_ID2['code'] = list(gene_names_ID2['AffyID'].map(dictiocodes))
+        gene_names_ID2.to_csv(path + '/codebook.csv')
+
     for index, row in bcf.iterrows():
         r = (row['Gene'])
         x = Seq(row['Sequence'])
         y = x.reverse_complement()
         y = y.upper()
-        probesP1 = probesP1.append({"Rarm": str(y[0:round(plp_length/2)]), "Larm": str(y[round(plp_length/2):plp_length]), "anchor" : "TGCGTCTATTTAGTGGAGCC", "idseq" : gene_names_ID2.loc[r]['idseq'], "Lbar_ID" : gene_names_ID2.loc[r]['Lbar_ID'], "AffyID" : gene_names_ID2.loc[r]['AffyID'], "Gene" : gene_names_ID2.loc[r]['gene'] }, ignore_index=True)
-        n=n+1
+        probesP1 = probesP1.append({
+            "Rarm": str(y[0:round(plp_length / 2)]),
+            "Larm": str(y[round(plp_length / 2):plp_length]),
+            "anchor": anchor,
+            "idseq": gene_names_ID2.loc[r]['idseq'],
+            "Lbar_ID": gene_names_ID2.loc[r]['Lbar_ID'],
+            "AffyID": gene_names_ID2.loc[r]['AffyID'],
+            "Gene": gene_names_ID2.loc[r]['gene']
+        }, ignore_index=True)
+        n = n + 1
 
-    print ("I just processed",n,"unique target sequences. I am done")
-    #The "probes" dataframe at this stage contains the sequences of the probes, before transforming the last base to RNA for ordering 
-    probe_col = ["sequence","Lbar_ID", "AffyID", "Gene"]
-    probes = pd.DataFrame (columns = probe_col)
-    probes["sequence"] = probesP1 ["Larm"] + probesP1 ["idseq"]+ probesP1 ["anchor"]+ probesP1["Rarm"]
-    probes["Lbar_ID"] = probesP1 ["Lbar_ID"]
-    probes["AffyID"] = probesP1 ["AffyID"]
-    probes["Gene"]= probesP1["Gene"]
-    # In[ ]: this bit of the script extracts the 3' terminal base of each probe, converts it to RNA code for IDT and rewrites the sequence in the dataframe. Then it outputs a CSV file.
-    rnaprobes = []
-    for pad in probes.itertuples():
-        capt = pad.sequence
-        rnabase = (capt[-1])
-        if rnabase == 'T':
-        	rnabase = 'U'  # Change 'T' to 'U'
-        plp = (capt [0:-1]+"r"+rnabase)
-        rnaprobes.append (plp)
-        #print (plp)
-    #print (rnaprobes)
-    probes["sequence"] = rnaprobes
-    #print (probes)
-    probes['code']=list(probes['AffyID'].map(dictiocodes))
-    probes.to_csv(path+'/designed_PLPs_final.csv')
+    print("I just processed", n, "unique target sequences. I am done")
+
+    probe_col = ["sequence", "Lbar_ID", "AffyID", "Gene"]
+    probes = pd.DataFrame(columns=probe_col)
+    probes["sequence"] = probesP1["Larm"] + probesP1["idseq"] + probesP1["anchor"] + probesP1["Rarm"]
+    probes["Lbar_ID"] = probesP1["Lbar_ID"]
+    probes["AffyID"] = probesP1["AffyID"]
+    probes["Gene"] = probesP1["Gene"]
+
+    probes['code'] = list(probes['AffyID'].map(dictiocodes))
+    probes.to_csv(path + '/designed_PLPs_final.csv')
     return probes
+
 
 def extract_align_variants(genes, ref, path, pathclustal, selection, plp_length=30, gc_min=50, gc_max=65, ligationsite_GC=True):
     import pandas as pd 
@@ -831,7 +840,7 @@ def map_sequences(selected, subgroup, mis_threshold, path, transcriptome=ref):
         import subprocess
 
         command = [
-            "cutadapt", "-j", "0", "-a", str(sequence), "--overlap", "30", 
+            "cutadapt", "-j", "0", "-a", str(sequence), "--overlap", str(plp_length), 
             "--untrimmed-output", "/dev/null", str(transcriptome), 
             "--no-indels", "-e", str(mis_threshold), "--action=none"
         ]
