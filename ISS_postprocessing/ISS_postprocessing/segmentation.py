@@ -7,7 +7,7 @@ from cellpose import utils, io
 from cellpose import models, io
 # DEFINE CELLPOSE MODEL
 # model_type='cyto' or model_type='nuclei'
-model = models.Cellpose(gpu=False, model_type='nuclei')
+#model = models.Cellpose(gpu=False, model_type='nuclei')
 import skimage
 from scipy import ndimage as ndi
 from skimage import (
@@ -70,7 +70,7 @@ def stardist_segmentation(image_path, output_path , model_name = '2D_versatile_f
 
 
 
-def cell_pose_segemenation_to_coo(image, diam, expanded_distance):
+def cell_pose_segemenation_to_coo(image, diam, expanded_distance, GPU=False):
     
     '''
     function to segement nuclei and expand segemented nuclei using cell pose. 
@@ -89,7 +89,19 @@ def cell_pose_segemenation_to_coo(image, diam, expanded_distance):
     markers until basins attributed to different markers meet on watershed lines. In many cases, 
     markers are chosen as local minima of the image, from which basins are flooded."
     '''
-    
+    if GPU==True:
+        from cellpose import models, core
+        !nvcc --version
+        !nvidia-smi
+        used_GPU = core.use_gpu()
+        print('>>> GPU activated? %d'%used_GPU)
+
+        # call logger_setup to have output of cellpose written
+        from cellpose.io import logger_setup
+        logger_setup();
+        model = models.Cellpose(gpu=True, model_type='nuclei')
+    else:
+        model = models.Cellpose(gpu=False, model_type='nuclei')
     # run cell pose segementation on the objects 
     masks_nuclei, flows, styles, diams = model.eval(image,diameter=diam)
     
@@ -121,7 +133,7 @@ from cellpose import utils, io
 from cellpose import models, io
 # DEFINE CELLPOSE MODEL
 # model_type='cyto' or model_type='nuclei'
-model = models.Cellpose(gpu=False, model_type='nuclei')
+
 import skimage
 from scipy import ndimage as ndi
 from skimage import (
@@ -145,7 +157,8 @@ def segment_tile(sample_folder,
                 expanded_distance = 30,
                 big_section = False, 
                 output_file_name='cellpose_segmentation.npz', 
-                 expand_tile = False
+                expand_tile = False,
+                use_GPU= False
                 ):
     print(sample_folder)
     output_path = sample_folder+'/cell_segmentation/'
@@ -164,7 +177,7 @@ def segment_tile(sample_folder,
                 print(tile)
                 dapi = io.imread(path + str(tile))
                 # segment and expand objects
-                coo = cell_pose_segemenation_to_coo(image = dapi, diam = diam, expanded_distance = expanded_distance)
+                coo = cell_pose_segemenation_to_coo(image = dapi, diam = diam, expanded_distance = expanded_distance, gpu=use_GPU)
                 # save segemenation in coo
                 scipy.sparse.save_npz(output_path+str(tile.split('.')[0])+'.npz', coo[1], compressed=True)
     else: 
